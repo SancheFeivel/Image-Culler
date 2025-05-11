@@ -7,7 +7,10 @@ import shutil
 import multiprocessing
 from functools import partial
 
- 
+folder = ""
+sharp_count = 0
+blurry_count = 0
+
 def get_fstop (path):
     try:
         img = Image.open(path)
@@ -79,8 +82,6 @@ def process_image (filename, sharp_path, folder):
     shutter_speed = get_shutter_speed(path)
     iso = get_iso(path)
     
-    print (fstop, shutter_speed, iso)
-    
     cropped_image = crop(image)
     
     laplacian_val = cv2.Laplacian(cropped_image, cv2.CV_64F).var()
@@ -89,13 +90,10 @@ def process_image (filename, sharp_path, folder):
     
     #determine if its sharp based on the fstop
     if fstop < 4 and iso < 2000:
-        print("ccccccc")
         is_sharp = laplacian_val > 36 
     elif iso > 5000:
-        print("Aaaaaa")
         is_sharp = laplacian_val > 410
     elif iso > 2000 or shutter_speed >= 0.05:
-        print("bbbbbb")
         is_sharp = laplacian_val > 200 
     else:
         is_sharp = laplacian_val > 75
@@ -112,7 +110,8 @@ def process_image (filename, sharp_path, folder):
 
 
 def main():
-    folder = r"" #source folder
+    global folder, sharp_count, blurry_count
+    
     sharp_path = os.path.join(folder, 'sharp') #output folder
     os.makedirs(sharp_path, exist_ok=True)
     
@@ -128,7 +127,7 @@ def main():
     print(f"Found {len(image_files)} JPG files to process") 
     
     
-    num_cores = max(1, multiprocessing.cpu_count() - 1)
+    num_cores = max(1, multiprocessing.cpu_count() - 3)
     print(f"Processing with {num_cores} cores")
     
     with multiprocessing.Pool(processes=num_cores) as pool:
@@ -142,9 +141,10 @@ def main():
     sharp_count = sum(1 for r in results if r is not None and r[1])
     blurry_count = sum(1 for r in results if r is not None and not r[1])
     
-    print(f"\nProcessing complete!")
+    print(f"\nProcessing complete.")
     print(f"Sharp images: {sharp_count}")
     print(f"Blurry images: {blurry_count}")
+    print(f"Sharp images moved to: {os.path.join(folder,"sharp")}")
     
 if __name__ == "__main__":
     main()
