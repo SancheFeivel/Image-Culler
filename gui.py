@@ -99,9 +99,6 @@ class MainApp:
             
         except Exception as e:
             print(f"Error: {e}")
-        
-        self.output_box.place(x=410, y=20, width=290, height=440)
-        self.canvas.itemconfig(self.processing_text, text="Processing Images...")        
 
         def start_process():
             self.sorter_thread = threading.Thread(target=self.run_sorter)
@@ -121,9 +118,15 @@ class MainApp:
             else:
                 update_ui()
         
-        sys.stdout = redirect_stdout(self.output_box)
-        
-        start_process()
+        if blur.folder != "":
+            self.output_box.place(x=410, y=20, width=290, height=440)
+            self.canvas.itemconfig(self.processing_text, text="Processing Images...")        
+            sys.stdout = redirect_stdout(self.output_box)
+            
+            start_process()
+        else:
+            self.canvas.itemconfig(self.processing_text, text="Invalid directory.") 
+            print("aaaa")
 
     def run_sorter(self):
         blur.main()
