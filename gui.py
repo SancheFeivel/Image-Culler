@@ -28,13 +28,16 @@ class MainApp:
         self.root.geometry("720x480")
         self.root.configure(bg="#000000")
         self.root.resizable(False, False)
+        self.root.title("Image Culler")
+        self.root.iconbitmap(relative_to_assets("CF.ico"))
+    
 
         self.setup_ui()
 
     def setup_ui(self):
         canvas = Canvas(
             self.root,
-            bg="#000000",
+            bg="#252827",
             height=480,
             width=720,
             bd=0,
@@ -44,18 +47,18 @@ class MainApp:
         canvas.place(x=0, y=0)
 
         canvas.create_text(
-            8.0, 455.0, anchor="nw",
-            text="Version 1.0.0",
+            8.0,
+            455.0,
+            anchor="nw",
+            text="Version 1.1.0",
             fill="#D9D9D9",
             font=("Inter ExtraLightItalic", 16 * -1)
-        )
+)
         
         self.canvas = canvas
 
-        self.processing_text = canvas.create_text (22.0, 175.0, anchor="nw",text="",fill="#D9D9D9",font=("Inter", 36 * -1))
-        self.sharp = canvas.create_text(22.0, 277.0, anchor="nw", text=f"", fill="#D9D9D9", font=("Inter", 24 * -1))
-        self.blurred = canvas.create_text(22.0, 247.0, anchor="nw", text=f"", fill="#D9D9D9", font=("Inter", 24 * -1))
-        self.total = canvas.create_text(22.0, 217.0, anchor="nw", text="", fill="#D9D9D9", font=("Inter", 24 * -1))
+        self.processing_text = canvas.create_text(22.0, 245.0, anchor="nw", text="", fill="#D9D9D9", font=("Inter", 36 * -1))
+
 
         button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
         button_1 = Button(
@@ -65,8 +68,8 @@ class MainApp:
             command=lambda: self.start_clicked(),
             relief="flat"
         )
-        button_1.image = button_image_1  # Keep a reference
-        button_1.place(x=22.0, y=115.0, width=100.0, height=40.0)
+        button_1.image = button_image_1  
+        button_1.place(x=22.0, y=200.0, width=100.0, height=40.0)
 
         button_image_2 = PhotoImage(file=relative_to_assets("button_2.png"))
         button_2 = Button(
@@ -76,19 +79,30 @@ class MainApp:
             command=lambda: self.folder_clicked(),
             relief="flat"
         )
-        button_2.image = button_image_2  # Keep a reference
-        button_2.place(x=132.0, y=115.0, width=100.0, height=40.0)
+        button_2.image = button_image_2  
+        button_2.place(x=127.0, y=200.0, width=100.0, height=40.0)
 
         canvas.create_text(22.0, 20.0, anchor="nw", text="Folder Directory:", fill="#FFFFFF", font=("Inter", 36 * -1))
 
         entry_image_1 = PhotoImage(file=relative_to_assets("entry_1.png"))
         canvas.create_image(205.0, 85.0, image=entry_image_1)
-        self.entry_image_1 = entry_image_1  # Keep a reference
+        self.entry_image_1 = entry_image_1  
 
-        self.entry_1 = Entry(font= ("Helvetica", 20), bd=0, bg="#D9D9D9", fg="#000716", highlightthickness=0)
-        self.entry_1.place(x=38.0, y=65.0, width=334.0, height=38.0)
+        self.entry_1 = Entry(font= ("Helvetica", 20), bd=0, bg="#1E1E1E", fg="#D9D9D9", highlightthickness=0)
+        self.entry_1.place(x=27.0, y=68.0, width=358.0, height=34.0)
         
-        self.output_box = ScrolledText(self.root,font= ("tkfont", 12), bg="black", fg="#D9D9D9", insertbackground="#D9D9D9", wrap="word", borderwidth=0)
+        canvas.create_text(22.0,110.0,anchor="nw",text="Tolerance compensation:",fill="#D9D9D9",font=("Inter", 30 * -1))
+        
+        entry_image_2 = PhotoImage(file=relative_to_assets("entry_2.png"))
+        canvas.create_image(91.0,170.0,image=entry_image_2)
+        self.entry_image_2 = entry_image_2
+        
+        self.comp = Entry(font= ("Helvetica", 20), bd=0, bg="#1E1E1E", fg="#D9D9D9", highlightthickness=0)
+        self.comp.place(x=26.0,y=153.0,width=130.0,height=34.0)
+# 1E1E1E
+
+
+        self.output_box = ScrolledText(self.root,font= ("tkfont", 12), bg="#252827", fg="#D9D9D9", insertbackground="#D9D9D9", wrap="word", borderwidth=0)
         
 
 
@@ -96,6 +110,13 @@ class MainApp:
         try:
             blur.folder =self.entry_1.get()
             print (blur.folder)
+            
+            compensation_value = self.comp.get()
+            try:
+                blur.tolerance_compensation = float(compensation_value) if compensation_value else 0.0
+            except ValueError:
+                blur.tolerance_compensation = 0.0  # fallback in case of invalid input
+                print("Warning: Invalid compensation value; using default of 0.0")
             
         except Exception as e:
             print(f"Error: {e}")
@@ -106,10 +127,6 @@ class MainApp:
             check_if_done()
                 
         def update_ui():
-            self.canvas.itemconfig(self.sharp, text=f"Sharp: {blur.sharp_count}")
-            self.canvas.itemconfig(self.blurred, text=f"Blurred: {blur.blurry_count}")
-            total = blur.sharp_count + blur.blurry_count
-            self.canvas.itemconfig(self.total, text=f"Image count: {total}")
             self.canvas.itemconfig(self.processing_text, text="Processing complete.")
             
         def check_if_done():
