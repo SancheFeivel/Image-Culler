@@ -4,8 +4,10 @@ from tkinter.scrolledtext import ScrolledText
 import types
 import os
 import blur_sorter as blur
+from blur_sorter import cancel_processing
 import threading
 import sys
+
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / "build" / "assets" / "frame0"
@@ -30,7 +32,8 @@ class MainApp:
         self.root.resizable(False, False)
         self.root.title("Image Culler")
         self.root.iconbitmap(relative_to_assets("CF.ico"))
-    
+        self.sorter_thread = None
+        self.is_processing = False
 
         self.setup_ui()
 
@@ -50,7 +53,7 @@ class MainApp:
             8.0,
             455.0,
             anchor="nw",
-            text="Version 1.1.0",
+            text="Version 1.1.2",
             fill="#D9D9D9",
             font=("Inter ExtraLightItalic", 16 * -1)
 )
@@ -58,18 +61,25 @@ class MainApp:
         self.canvas = canvas
 
         self.processing_text = canvas.create_text(22.0, 245.0, anchor="nw", text="", fill="#D9D9D9", font=("Inter", 36 * -1))
+        self.error_text_1 = canvas.create_text(22.0, 285.0, anchor="nw", text="", fill="#D9D9D9", font=("Inter", 22 * -1))
+        self.error_text_2 = canvas.create_text(22.0, 308.0, anchor="nw", text="", fill="#D9D9D9", font=("Inter", 22 * -1))
 
+        self.cancel_button_image = PhotoImage(file=relative_to_assets("button_3.png"))
+        self.cancel_button = Button(image=self.cancel_button_image,borderwidth=0,highlightthickness=0,command=lambda: self.cancel_clicked(),relief="flat")
+        
+        self.cancel_button.image = self.cancel_button_image
+        self.cancel_button.place(x=22.0,y=200.0,width=100.0,height=40.0)
 
-        button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
-        button_1 = Button(
-            image=button_image_1,
+        self.button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
+        self.button_1 = Button(
+            image=self.button_image_1,
             borderwidth=0,
             highlightthickness=0,
             command=lambda: self.start_clicked(),
             relief="flat"
         )
-        button_1.image = button_image_1  
-        button_1.place(x=22.0, y=200.0, width=100.0, height=40.0)
+        self.button_1.image = self.button_image_1  
+        self.button_1.place(x=22.0, y=200.0, width=100.0, height=40.0)
 
         button_image_2 = PhotoImage(file=relative_to_assets("button_2.png"))
         button_2 = Button(
@@ -81,6 +91,7 @@ class MainApp:
         )
         button_2.image = button_image_2  
         button_2.place(x=127.0, y=200.0, width=100.0, height=40.0)
+    
 
         canvas.create_text(22.0, 20.0, anchor="nw", text="Folder Directory:", fill="#FFFFFF", font=("Inter", 36 * -1))
 
@@ -99,35 +110,45 @@ class MainApp:
         
         self.comp = Entry(font= ("Helvetica", 20), bd=0, bg="#1E1E1E", fg="#D9D9D9", highlightthickness=0)
         self.comp.place(x=26.0,y=153.0,width=130.0,height=34.0)
-# 1E1E1E
-
 
         self.output_box = ScrolledText(self.root,font= ("tkfont", 12), bg="#252827", fg="#D9D9D9", insertbackground="#D9D9D9", wrap="word", borderwidth=0)
         
 
 
     def start_clicked(self):
+        
+        if self.is_processing:
+            return
+        
         try:
             blur.folder =self.entry_1.get()
-            print (blur.folder)
-            
             compensation_value = self.comp.get()
+            self.canvas.itemconfig(self.error_text_1, text="")
+            self.canvas.itemconfig(self.error_text_2, text="")
+            
             try:
-                blur.tolerance_compensation = float(compensation_value) if compensation_value else 0.0
+                blur.tolerance_compensation = int(compensation_value) if compensation_value else 0
             except ValueError:
-                blur.tolerance_compensation = 0.0  # fallback in case of invalid input
-                print("Warning: Invalid compensation value; using default of 0.0")
+                blur.tolerance_compensation = 0  # fallback in case of invalid input
+                self.canvas.itemconfig(self.error_text_1, text="Invalid compensation value;")
+                self.canvas.itemconfig(self.error_text_2, text="using default of 0.")
             
         except Exception as e:
             print(f"Error: {e}")
 
         def start_process():
+            self.is_processing = True 
             self.sorter_thread = threading.Thread(target=self.run_sorter)
+            self.sorter_thread.daemon = True
             self.sorter_thread.start()
+            self.cancel_button.lift()
             check_if_done()
                 
         def update_ui():
+            self.is_processing = False
             self.canvas.itemconfig(self.processing_text, text="Processing complete.")
+            self.button_1.lift()
+            
             
         def check_if_done():
             if self.sorter_thread.is_alive():
@@ -143,20 +164,41 @@ class MainApp:
             start_process()
         else:
             self.canvas.itemconfig(self.processing_text, text="Invalid directory.") 
-            print("aaaa")
-
-    def run_sorter(self):
-        blur.main()
         
     def folder_clicked(self):
         try:
-            folder_path = self.entry_1.get()
-            print(folder_path)
-            os.startfile(os.path.join(folder_path, 'sharp'))
+            if self.entry_1 != "":
+                folder_path = self.entry_1.get()
+                os.startfile(os.path.join(folder_path, 'sharp'))
+                
             
         except Exception as e:
             print(f"Error: {e}")
+            self.canvas.itemconfig(self.processing_text, text="Invalid directory.") 
 
+    def cancel_clicked(self):
+        if not self.is_processing:
+            return
+        
+        self.canvas.itemconfig(self.processing_text, text="Cancelling...")
+        
+        cancel_processing()
+        
+        self.is_processing=False
+        self.canvas.itemconfig(self.processing_text, text="Processing cancelled.")
+        self.button_1.lift()
+        
+        if self.sorter_thread and self.sorter_thread.is_alive():
+            self.root.after(100, self.check_thread_finished)
+    
+    def check_thread_finished(self):
+        if self.sorter_thread and self.sorter_thread.is_alive():
+            self.root.after(100, self.check_thread_finished)  # Check again
+        else:
+            print("Processing thread finished\n")
+
+    def run_sorter(self):
+        blur.main()
 
     
 if __name__ == "__main__":

@@ -1,15 +1,18 @@
 import cv2
 import os
-import numpy as np
 from PIL import Image
 from PIL.ExifTags import TAGS
 import shutil
 import multiprocessing
+import time
 
 folder = ""
 tolerance_compensation= 0
 sharp_count = 0
 blurry_count = 0
+
+cancel_flag = None
+progress_callback = None
 
 # Get f-stop (aperture) from EXIF data
 def get_fstop(path):
@@ -67,9 +70,25 @@ def crop(image):
     y_end = int(h * 0.75)
     return image[y_start:y_end, x_start:x_end]
 
+def init_cancellation():
+    global cancel_flag
+    manager= multiprocessing.Manager()
+    cancel_flag= manager.Value("b", False)
+    return cancel_flag
+
+def cancel_processing():
+    global cancel_flag
+    if cancel_flag:
+        cancel_flag.value=True
+        print("Cancelation requsted...")
+
+def is_cancelled():
+    global cancel_flag
+    return cancel_flag and cancel_flag.value
+
 # Analyze sharpness and copy sharp images
 def process_image(args):
-    filename, sharp_path, folder, tolerance_compensation = args
+    filename, sharp_path, folder, tolerance_compensation, cancel_flag = args
 
     if not filename.lower().endswith(".jpg"):
         return None
@@ -97,6 +116,9 @@ def process_image(args):
         is_sharp = laplacian_val > (200 + tolerance_compensation)
     else:
         is_sharp = laplacian_val > (75 + tolerance_compensation)
+        
+    if cancel_flag.value:
+        return None
 
     # Copy sharp image to output folder
     if is_sharp:
@@ -110,7 +132,12 @@ def process_image(args):
     return filename, is_sharp, laplacian_val, fstop
 
 # Entry point
-def main():
+def main(progress_update_callback=None):
+    global cancel_flag, progress_callback
+    
+    # Initialize cancellation support
+    cancel_flag = init_cancellation()
+    progress_callback = progress_update_callback
 
     sharp_path = os.path.join(folder, 'sharp')
     os.makedirs(sharp_path, exist_ok=True)
@@ -127,21 +154,58 @@ def main():
     print(f"Found {len(image_files)} JPG files to process")
 
     num_cores = max(1, multiprocessing.cpu_count() - 3)
-    print(f"Processing with {num_cores} cores")
+    print(f"Processing with {num_cores} cores...\n")
 
-    with multiprocessing.Pool(processes=num_cores) as pool:
-        args_list = [(filename, sharp_path, folder, tolerance_compensation)
-                     for filename in image_files]
-        results = pool.map(process_image, args_list)
+    # Check for cancellation before starting
+    if is_cancelled():
+        print("Processing cancelled before starting")
+        return
 
+    try:
+        with multiprocessing.Pool(processes=num_cores) as pool:
+            args_list = [(filename, sharp_path, folder, tolerance_compensation, cancel_flag)
+                         for filename in image_files]
+            
+            # Use map_async for better control over the process
+            result_async = pool.map_async(process_image, args_list)
+            
+            # Poll for completion and check for cancellation
+            while not result_async.ready():
+                if is_cancelled():
+                    print("Cancelling processing...")
+                    pool.terminate()  # Force terminate all processes
+                    pool.join()
+                    print("Processing cancelled by user")
+                    return
+                
+                # Optional: Update progress if callback provided
+                if progress_callback:
+                    # This is approximate since we can't easily track individual completions
+                    progress_callback("Processing images...")
+                
+                time.sleep(0.1)  # Check every 100ms
+                
+            # Get results if not cancelled
+            if not is_cancelled():
+                results = result_async.get()
+            else:
+                print("Processing was cancelled")
+                return
+
+    except Exception as e:
+        print(f"Error during processing: {e}")
+        return
+
+    # Filter out None results (cancelled or failed processes)
+    valid_results = [r for r in results if r is not None]
+    
     # Count results
-    sharp_count = sum(1 for r in results if r and r[1])
-    blurry_count = sum(1 for r in results if r and not r[1])
+    sharp_count = sum(1 for r in valid_results if r[1])
+    blurry_count = sum(1 for r in valid_results if not r[1])
 
-    print(f"\nProcessing complete")
+    print(f"Processing complete")
     print(f"Sharp images: {sharp_count}")
     print(f"Blurry images: {blurry_count}")
-    print(f"Sharp images copied to: {os.path.join(folder, 'sharp')}")
-
+    print(f"Sharp images copied to: {os.path.join(folder, 'sharp')}\n")
 if __name__ == "__main__":
     main()
