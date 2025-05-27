@@ -1,3 +1,4 @@
+
 from pathlib import Path
 from tkinter import *
 from tkinter.scrolledtext import ScrolledText
@@ -7,10 +8,16 @@ import blur_sorter as blur
 from blur_sorter import cancel_processing
 import threading
 import sys
+from multiprocessing import freeze_support
 
 
-OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / "build" / "assets" / "frame0"
+if getattr(sys, 'frozen', False):
+    BASE_PATH = Path(sys._MEIPASS)
+else:
+    BASE_PATH = Path(__file__).parent
+
+ASSETS_PATH = BASE_PATH / "assets" / "frame0"
+
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
@@ -31,7 +38,7 @@ class MainApp:
         self.root.configure(bg="#000000")
         self.root.resizable(False, False)
         self.root.title("Image Culler")
-        self.root.iconbitmap(relative_to_assets("CF.ico"))
+        self.root.iconbitmap(str(relative_to_assets("Rei.ico")))
         self.sorter_thread = None
         self.is_processing = False
 
@@ -64,13 +71,13 @@ class MainApp:
         self.error_text_1 = canvas.create_text(22.0, 285.0, anchor="nw", text="", fill="#D9D9D9", font=("Inter", 22 * -1))
         self.error_text_2 = canvas.create_text(22.0, 308.0, anchor="nw", text="", fill="#D9D9D9", font=("Inter", 22 * -1))
 
-        self.cancel_button_image = PhotoImage(file=relative_to_assets("button_3.png"))
+        self.cancel_button_image = PhotoImage(file=str(relative_to_assets("button_3.png")))
         self.cancel_button = Button(image=self.cancel_button_image,borderwidth=0,highlightthickness=0,command=lambda: self.cancel_clicked(),relief="flat")
         
         self.cancel_button.image = self.cancel_button_image
         self.cancel_button.place(x=22.0,y=200.0,width=100.0,height=40.0)
 
-        self.button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
+        self.button_image_1 = PhotoImage(file=str(relative_to_assets("button_1.png")))
         self.button_1 = Button(
             image=self.button_image_1,
             borderwidth=0,
@@ -81,7 +88,7 @@ class MainApp:
         self.button_1.image = self.button_image_1  
         self.button_1.place(x=22.0, y=200.0, width=100.0, height=40.0)
 
-        button_image_2 = PhotoImage(file=relative_to_assets("button_2.png"))
+        button_image_2 = PhotoImage(file=str(relative_to_assets("button_2.png")))
         button_2 = Button(
             image=button_image_2,
             borderwidth=0,
@@ -95,7 +102,7 @@ class MainApp:
 
         canvas.create_text(22.0, 20.0, anchor="nw", text="Folder Directory:", fill="#FFFFFF", font=("Inter", 36 * -1))
 
-        entry_image_1 = PhotoImage(file=relative_to_assets("entry_1.png"))
+        entry_image_1 = PhotoImage(file=str(relative_to_assets("entry_1.png")))
         canvas.create_image(205.0, 85.0, image=entry_image_1)
         self.entry_image_1 = entry_image_1  
 
@@ -104,7 +111,7 @@ class MainApp:
         
         canvas.create_text(22.0,110.0,anchor="nw",text="Tolerance compensation:",fill="#D9D9D9",font=("Inter", 30 * -1))
         
-        entry_image_2 = PhotoImage(file=relative_to_assets("entry_2.png"))
+        entry_image_2 = PhotoImage(file=str(relative_to_assets("entry_2.png")))
         canvas.create_image(91.0,170.0,image=entry_image_2)
         self.entry_image_2 = entry_image_2
         
@@ -202,6 +209,7 @@ class MainApp:
 
     
 if __name__ == "__main__":
+    freeze_support()
     window = Tk()
     app = MainApp(window)
     window.mainloop()

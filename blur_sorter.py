@@ -207,5 +207,3 @@ def main(progress_update_callback=None):
     print(f"Sharp images: {sharp_count}")
     print(f"Blurry images: {blurry_count}")
     print(f"Sharp images copied to: {os.path.join(folder, 'sharp')}\n")
-if __name__ == "__main__":
-    main()
