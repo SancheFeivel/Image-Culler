@@ -90,7 +90,7 @@ def is_cancelled():
 
 # Analyze sharpness and copy sharp images
 def process_image(args):
-    filename, sharp_path, folder, tolerance_compensation, cancel_flag, use_starcheck, use_laplaciancheck = args
+    filename, sharp_path, folder, base_blur, tolerance_compensation, cancel_flag, use_starcheck, use_laplaciancheck = args
     path = os.path.join(folder, filename)
     image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)    
     rating = "0"
@@ -189,7 +189,7 @@ def main(progress_update_callback=None, use_starcheck=False, use_laplaciancheck=
 
     try:
         with multiprocessing.Pool(processes=num_cores) as pool:
-            args_list = [(filename, sharp_path, folder, tolerance_compensation, cancel_flag, use_starcheck, use_laplaciancheck)
+            args_list = [(filename, sharp_path, folder, base_blur, tolerance_compensation, cancel_flag, use_starcheck, use_laplaciancheck)
                          for filename in image_files]
             
             # Use map_async for better control over the process

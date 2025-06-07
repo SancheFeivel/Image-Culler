@@ -42,7 +42,6 @@ class MainApp:
         self.root.iconbitmap(str(relative_to_assets("Rei.ico")))
         self.sorter_thread = None
         self.is_processing = False
-        self.sharpness_threshold = "med"
         self.laplacian_enabled = True
         self.star_enabled = False
         
@@ -233,7 +232,7 @@ class MainApp:
         
         try:
             blur.folder = self.entry_1.get()
-            
+            blur.base_blur = self.sharpness_level
             compensation_value = self.tolerance_comp.get()
             self.canvas.itemconfig(self.error_text_1, text="")
             self.canvas.itemconfig(self.error_text_2, text="")
@@ -290,11 +289,11 @@ class MainApp:
         
         
     def set_blur_level(self, level):
-        blur.base_blur = int(level)
+        self.sharpness_level = int(level)
         buttons = {
             -20: (self.low_button, self.low_image, self.low_image_active),
             0: (self.med_button, self.med_image, self.med_image_active),
-            20: (self.high_button, self.high_image, self.high_image_active)
+            30: (self.high_button, self.high_image, self.high_image_active)
         }
 
         for val, (button, disabled_img, active_img) in buttons.items():
@@ -310,7 +309,7 @@ class MainApp:
         self.set_blur_level(0)
 
     def high_clicked(self):
-        self.set_blur_level(20)
+        self.set_blur_level(30)
 
         
     def cancel_clicked(self):
