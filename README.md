@@ -9,21 +9,25 @@
 
 1. Run `gui.py` or the compiled `.exe`.
 2. Enter the full path to the folder containing `.jpg` images.
-3. Set a tolerance compensation value (optional).  
-   - Positive values raise the sharpness threshold, making it harder for images to be counted as sharp.  
-   - Negative values lower the threshold, allowing more images to be classified as sharp.
-4. (Optional) Click the **Settings** button to configure additional options:
-   - **Blur Level Mode**:  
-     Toggle between `On` (uses a stricter blur classification with a blur threshold) and `Off`.
+3. (Optional) Click the ⚙️ **Settings** button to configure additional options:
    - **Sorting Method**:  
-     Choose from:
+    Choose from:
      - `Laplacian Variance`: Uses the variance of the Laplacian for sharpness measurement.
      - `Rating System`: Uses the users star rating (set in camera or in file manager) to determine if image is sharp.
-   - These settings dynamically affect how sharpness is calculated and how images are sorted.
-5. Click **Start** to begin copying sharp images into the `sharp/` folder.
-6. Click **Cancel** to stop processing.
-7. Click **Open Folder** to view sorted results.
+   - **Blur Level Mode**:
+     Toggle between `Low`, `Medium`, or `High` to apply stricter blur filtering:  
+     - `Low`: Allows slightly blurry images.  
+     - `Medium`: Balanced filtering.  
+     - `High`: Only very sharp images are accepted.
+   - **Threshold Compensation** (optional):  
+     Adjusts sensitivity of sharpness detection:  
+     - Positive values raise the sharpness threshold (fewer images pass).  
+     - Negative values lower the threshold (more images pass).
+4. Click **Start** to begin processing. Sharp images will be copied into the `sharp/` folder.
+5. Click **Cancel** to stop processing early.
+6. Click **Open Folder** to view sorted results.
 
 ## License
 
 This project is licensed under the MIT License.
+
