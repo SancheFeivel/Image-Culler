@@ -16,7 +16,7 @@
    - **Blur Level Mode**:  
      Toggle between `On` (uses a stricter blur classification with a blur threshold) and `Off`.
    - **Sorting Method**:  
-     Choose between:
+     Choose from:
      - `Laplacian Variance`: Uses the variance of the Laplacian for sharpness measurement.
      - `Rating System`: Uses the users star rating (set in camera or in file manager) to determine if image is sharp.
    - These settings dynamically affect how sharpness is calculated and how images are sorted.
