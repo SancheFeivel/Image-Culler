@@ -8,6 +8,7 @@ import time
 
 folder = ""
 tolerance_compensation= 0
+base_blur = 0
 sharp_count = 0
 blurry_count = 0
 
@@ -17,8 +18,9 @@ progress_callback = None
 # Get f-stop (aperture) from EXIF data
 def get_fstop(path):
     try:
-        img = Image.open(path)
-        exif_data = img._getexif()
+        with Image.open(path) as img:
+            exif_data = img._getexif()
+            
         if exif_data:
             for tag_id, value in exif_data.items():
                 tag = TAGS.get(tag_id, tag_id)
@@ -88,51 +90,75 @@ def is_cancelled():
 
 # Analyze sharpness and copy sharp images
 def process_image(args):
-    filename, sharp_path, folder, tolerance_compensation, cancel_flag = args
-
+    filename, sharp_path, folder, tolerance_compensation, cancel_flag, use_starcheck, use_laplaciancheck = args
+    path = os.path.join(folder, filename)
+    image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)    
+    rating = "0"
+    is_sharp = False
+    
     if not filename.lower().endswith(".jpg"):
         return None
 
-    path = os.path.join(folder, filename)
-    image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     if image is None:
         print(f"Failed to read {filename}")
         return None
-
-    fstop = get_fstop(path)
-    shutter_speed = get_shutter_speed(path)
-    iso = get_iso(path)
-    cropped_image = crop(image)
-    laplacian_val = cv2.Laplacian(cropped_image, cv2.CV_64F).var()
-
-    is_sharp = False
-
-    # Determine sharpness threshold based on exposure settings
-    if fstop < 4 and iso < 2000:
-        is_sharp = laplacian_val > (36 + tolerance_compensation)
-    elif iso > 5000:
-        is_sharp = laplacian_val > (410 + tolerance_compensation)
-    elif iso > 2000 or shutter_speed >= 0.05:
-        is_sharp = laplacian_val > (200 + tolerance_compensation)
-    else:
-        is_sharp = laplacian_val > (75 + tolerance_compensation)
         
-    if cancel_flag.value:
-        return None
+    #Checks if images has a star rating
+    if use_starcheck:
+        try:
+            with Image.open(path) as star_image:
+                star_data = star_image._getexif()
+                
+            if star_data:
+                for tag_id, value in star_data.items():
+                    tag = TAGS.get(tag_id, tag_id)
+                    if tag == "Rating" or tag == "RatingPercent":
+                        print(f"{tag}: {value}")
+                        rating = str(value)
+                        break
+        except Exception as e:
+            print(f"Error checking rating: {e}")
+            
+        if rating != "0":
+            is_sharp= True
+            if cancel_flag.value:
+                return None
+            #skip Laplaciancheck if star rating is available
+            return filename, is_sharp, None, get_fstop(path)
 
-    # Copy sharp image to output folder
-    if is_sharp:
-        processed_image = os.path.join(sharp_path, filename)
-        if not os.path.exists(processed_image):
-            shutil.copy(path, processed_image)
-        print(f"{filename}: {laplacian_val:.2f} - sharp")
-    else:
-        print(f"{filename}: {laplacian_val:.2f} - blurred")
+    if use_laplaciancheck:
+        cropped_image = crop(image)
+        laplacian_val = cv2.Laplacian(cropped_image, cv2.CV_64F).var()
+        fstop = get_fstop(path)
+        shutter_speed = get_shutter_speed(path)
+        iso = get_iso(path)
+        
+        # Determine sharpness threshold based on exposure settings
+        if fstop < 4 and iso < 2000:
+            is_sharp = laplacian_val > (36 + base_blur + tolerance_compensation)
+        elif iso > 5000:
+            is_sharp = laplacian_val > (410 + base_blur + tolerance_compensation)
+        elif iso > 2000 or shutter_speed >= 0.05:
+            is_sharp = laplacian_val > (200 + base_blur + tolerance_compensation)
+        else:
+            is_sharp = laplacian_val > (75 + base_blur + tolerance_compensation)
+            
+        if cancel_flag.value:
+            return None
 
-    return filename, is_sharp, laplacian_val, fstop
+        # Copy sharp image to output folder
+        if is_sharp:
+            processed_image = os.path.join(sharp_path, filename)
+            if not os.path.exists(processed_image):
+                shutil.copy(path, processed_image)
+            print(f"{filename}: {laplacian_val:.2f} - sharp")
+        else:
+            print(f"{filename}: {laplacian_val:.2f} - blurred")
+
+        return filename, is_sharp, laplacian_val, fstop
 
 # Entry point
-def main(progress_update_callback=None):
+def main(progress_update_callback=None, use_starcheck=False, use_laplaciancheck=False):
     global cancel_flag, progress_callback
     
     # Initialize cancellation support
@@ -163,7 +189,7 @@ def main(progress_update_callback=None):
 
     try:
         with multiprocessing.Pool(processes=num_cores) as pool:
-            args_list = [(filename, sharp_path, folder, tolerance_compensation, cancel_flag)
+            args_list = [(filename, sharp_path, folder, tolerance_compensation, cancel_flag, use_starcheck, use_laplaciancheck)
                          for filename in image_files]
             
             # Use map_async for better control over the process
