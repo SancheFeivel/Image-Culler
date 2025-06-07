@@ -18,7 +18,7 @@
    - **Sorting Method**:  
      Choose between:
      - `Laplacian Variance`: Uses the variance of the Laplacian for sharpness measurement.
-     - `Rating System`: Assigns a 1–5 rating based on image sharpness levels.
+     - `Rating System`: Uses the users star rating (set in camera or in file manager) to determine if image is sharp.
    - These settings dynamically affect how sharpness is calculated and how images are sorted.
 5. Click **Start** to begin copying sharp images into the `sharp/` folder.
 6. Click **Cancel** to stop processing.
