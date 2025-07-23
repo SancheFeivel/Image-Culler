@@ -9,7 +9,7 @@ import sys
 from multiprocessing import freeze_support
 
 import blur_sorter as blur
-from blur_sorter import cancel_processing
+
 
 
 if getattr(sys, 'frozen', False):
@@ -44,16 +44,14 @@ class MainApp:
         self.is_processing = False
         self.laplacian_enabled = True
         self.star_enabled = False
-        
-        # Create frames for home and settings screens
+        self.sharpness_level = 0
+
         self.home_frame = tk.Frame(self.root, bg="white")
-        self.settings_frame = tk.Frame(self.root, bg="black")
-        
-        # Initialize both screens
+        self.settings_frame = tk.Frame(self.root, bg="black")        
+
         self.setup_homescreen()
         self.setup_settings()
-        
-        # Show home screen by default
+
         self.show_home()
         
     def show_home(self):
@@ -156,24 +154,24 @@ class MainApp:
         self.low_button = Button(self.settings_frame, image=self.low_image, borderwidth=0, highlightthickness=0, 
                                command=lambda: self.low_clicked(),bg="#262827", relief="flat")
         self.low_button.image = self.low_image
-        self.low_button.place(x=361.0, y=97.0, width=81.73652648925781, height=32.694610595703125)
+        self.low_button.place(x=341.0, y=97.0, width=81.73652648925781, height=32.694610595703125)
 
         self.med_image = PhotoImage(file=str(relative_to_assets("Med.png")))
         self.med_image_active = PhotoImage(file=str(relative_to_assets("Med1.png")))
         self.med_button = Button(self.settings_frame, image=self.med_image_active, borderwidth=0, highlightthickness=0, 
                                command=lambda: self.med_clicked(), bg="#262827", relief="sunken")
         self.med_button.image = self.med_image_active
-        self.med_button.place(x=456.6317138671875, y=97.0, width=81.73652648925781, height=32.694610595703125)
+        self.med_button.place(x=436.6317138671875, y=97.0, width=81.73652648925781, height=32.694610595703125)
 
         self.high_image = PhotoImage(file=str(relative_to_assets("High.png")))
         self.high_image_active = PhotoImage(file=str(relative_to_assets("High1.png")))
         self.high_button = Button(self.settings_frame, image=self.high_image, borderwidth=0, highlightthickness=0, 
                                 command=lambda: self.high_clicked(), bg="#262827", relief="flat")
         self.high_button.image = self.high_image
-        self.high_button.place(x=552.0, y=97.0, width=81.73652648925781, height=32.694610595703125)
+        self.high_button.place(x=532.0, y=97.0, width=81.73652648925781, height=32.694610595703125)
         
         # Settings text
-        self.settings_canvas.create_text(8.0, 455.0, anchor="nw", text="Version 1.2.0", fill="#D9D9D9", font=("Inter ExtraLightItalic", 16 * -1))
+        self.settings_canvas.create_text(8.0, 455.0, anchor="nw", text="Version 1.2.", fill="#D9D9D9", font=("Inter ExtraLightItalic", 16 * -1))
         self.settings_canvas.create_text(19.0, 42.0, anchor="nw", text="Laplacian Sorting:", fill="#D9D9D9", font=("Inter", 32 * -1))
         self.settings_canvas.create_text(19.0, 93.0, anchor="nw", text="Sharpness Threshold:", fill="#D9D9D9", font=("Inter", 32 * -1))
         self.settings_canvas.create_text(20.0, 143.0, anchor="nw", text="Threshold Compensation:", fill="#D9D9D9", font=("Inter", 32 * -1))
@@ -184,11 +182,11 @@ class MainApp:
         self.settings_canvas.create_rectangle(12.0, 283.0, 695.0007, 285.0, fill="#555555", outline="")
         self.settings_canvas.create_rectangle(16.9996, 20.5, 700.0004, 22.5, fill="#555555", outline="")
         
-        # Input 
-        entry_image_1 = PhotoImage(file=relative_to_assets("Threshold.png"))
-        self.settings_canvas.create_image(438.0, 163.0, image=entry_image_1)
+        # Threshold input
+        settings_entry_image_1 = PhotoImage(file=relative_to_assets("Threshold.png"))
+        self.settings_canvas.create_image(438.0, 163.0, image=settings_entry_image_1)
         self.tolerance_comp = Entry(self.settings_frame,font=("Helvetica", 20), bd=0, bg="#1E1E1E", fg="#D9D9D9", highlightthickness=0)
-        self.tolerance_comp.image = entry_image_1
+        self.tolerance_comp.image = settings_entry_image_1
         self.tolerance_comp.place(x=390.0, y=148.0, width=95.0, height=29.0)
         
         # Chekcbutton
@@ -198,12 +196,12 @@ class MainApp:
         self.laplacian_on = Button(self.settings_frame, image=self.on_image, borderwidth=0, highlightthickness=0, 
                                command=lambda: self.laplacian_clicked(),bg="#262827", relief="flat")
         self.laplacian_on.image = self.on_image
-        self.laplacian_on.place(x=300.0, y=45.0, width=81.73652648925781, height=32.694610595703125)
+        self.laplacian_on.place(x=280.0, y=45.0, width=81.73652648925781, height=32.694610595703125)
         
         self.star_on = Button(self.settings_frame, image=self.off_image, borderwidth=0, highlightthickness=0, 
                                command=lambda: self.star_clicked(),bg="#262827", relief="flat")
         self.star_on.image = self.off_image
-        self.star_on.place(x=250.0, y=228.0, width=81.73652648925781, height=32.694610595703125)
+        self.star_on.place(x=235.0, y=228.0, width=81.73652648925781, height=32.694610595703125)
 
     def laplacian_clicked(self):
         self.laplacian_enabled= not self.laplacian_enabled
@@ -229,51 +227,54 @@ class MainApp:
     def start_clicked(self):
         if self.is_processing:
             return
+
+        folder = self.entry_1.get().strip()
+        if not folder:
+            self.canvas.itemconfig(self.processing_text, text="Invalid directory.")
+            return
         
-        try:
-            blur.folder = self.entry_1.get()
-            blur.base_blur = self.sharpness_level
-            compensation_value = self.tolerance_comp.get()
-            self.canvas.itemconfig(self.error_text_1, text="")
-            self.canvas.itemconfig(self.error_text_2, text="")
-            
+        tolerance = 0
+
+        if self.tolerance_comp.get():
             try:
-                blur.tolerance_compensation = int(compensation_value) if compensation_value else 0
+                tolerance = int(self.tolerance_comp.get())
             except ValueError:
-                blur.tolerance_compensation = 0  # fallback in case of invalid input
+                tolerance = 0
                 self.canvas.itemconfig(self.error_text_1, text="Invalid compensation value;")
                 self.canvas.itemconfig(self.error_text_2, text="using default of 0.")
-            
-        except Exception as e:
-            print(f"Error: {e}")
+
+        options = {
+            "folder": folder,
+            "base_blur": self.sharpness_level,
+            "tolerance": tolerance,
+            "use_starcheck": self.star_enabled,
+            "use_laplaciancheck": self.laplacian_enabled,
+        }
+
 
         def start_process():
             self.is_processing = True 
-            self.sorter_thread = threading.Thread(target=self.run_sorter)
+            self.sorter_thread = threading.Thread(target=self.run_sorter, args=(options,))
             self.sorter_thread.daemon = True
             self.sorter_thread.start()
             self.cancel_button.lift()
             check_if_done()
-                
+
         def update_ui():
             self.is_processing = False
             self.canvas.itemconfig(self.processing_text, text="Processing complete.")
             self.button_1.lift()
-            
+
         def check_if_done():
             if self.sorter_thread.is_alive():
-                self.root.after(100, check_if_done)  # Check again after 100ms
+                self.root.after(100, check_if_done)
             else:
                 update_ui()
-        
-        if blur.folder != "":
-            self.output_box.place(x=410, y=20, width=290, height=440)
-            self.canvas.itemconfig(self.processing_text, text="Processing Images...")        
-            sys.stdout = redirect_stdout(self.output_box)
-            
-            start_process()
-        else:
-            self.canvas.itemconfig(self.processing_text, text="Invalid directory.") 
+
+        self.output_box.place(x=410, y=20, width=290, height=440)
+        self.canvas.itemconfig(self.processing_text, text="Processing Images...")
+        sys.stdout = redirect_stdout(self.output_box)
+        start_process()
         
     def folder_clicked(self):
         try:
@@ -318,7 +319,6 @@ class MainApp:
         
         self.canvas.itemconfig(self.processing_text, text="Cancelling...")
         
-        cancel_processing()
         
         self.is_processing = False
         self.canvas.itemconfig(self.processing_text, text="Processing cancelled.")
@@ -333,9 +333,8 @@ class MainApp:
         else:
             print("Processing thread finished\n")
 
-    def run_sorter(self):
-        blur.main(use_starcheck = self.star_enabled,
-                    use_laplaciancheck = self.laplacian_enabled)
+    def run_sorter(self, options):
+        blur.main(**options)
 
     
 if __name__ == "__main__":
