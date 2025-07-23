@@ -71,7 +71,6 @@ class ImageAnalyzer:
         return laplacian > threshold, laplacian
 
 
-# 🔁 STATIC function that can be used in multiprocessing
 def process_image_static(folder, filename, output_folder, base_blur, tolerance, use_rating, use_laplacian):
     if not filename.lower().endswith(".jpg"):
         return None
