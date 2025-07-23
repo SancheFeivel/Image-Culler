@@ -62,7 +62,7 @@ class ImageAnalyzer:
             threshold = 36
         elif iso > 5000:
             threshold = 410
-        elif iso > 2000 or (shutter and shutter >= 0.05):
+        elif iso > 2000 or (shutter and shutter <= 0.05):
             threshold = 200
         else:
             threshold = 75
@@ -71,24 +71,31 @@ class ImageAnalyzer:
         return laplacian > threshold, laplacian
 
 
+#sorts images based on the "is_sharp" results
 def process_image_static(folder, filename, output_folder, base_blur, tolerance, use_rating, use_laplacian):
     if not filename.lower().endswith(".jpg"):
         return None
 
     path = os.path.join(folder, filename)
     image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    if image is None:
-        print(f"Failed to read {filename}")
-        return None
+    
+    try:
+        if image is None:
+            print(f"Failed to read {filename}")
+            return None
 
-    if use_rating and EXIFHelper.get_rating(path) != "0":
-        return filename, True, None
+        if use_rating and EXIFHelper.get_rating(path) != "0": #if image has a rating value, automatically add to the sharp folder
+            return filename, True, None
 
-    if use_laplacian:
-        is_sharp, laplacian = ImageAnalyzer.is_sharp(image, path, base_blur, tolerance)
-        if is_sharp:
-            shutil.copy(path, os.path.join(output_folder, filename))
-        return filename, is_sharp, laplacian
+        if use_laplacian:
+            is_sharp, laplacian = ImageAnalyzer.is_sharp(image, path, base_blur, tolerance)
+            if is_sharp:
+                shutil.copy(path, os.path.join(output_folder, filename))      
+            return filename, is_sharp, laplacian
+    
+    finally:
+        del image
+        cv2.destroyAllWindows()
 
     return None
 
